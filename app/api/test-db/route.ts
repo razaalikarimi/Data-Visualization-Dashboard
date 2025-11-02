@@ -7,11 +7,19 @@ export async function GET() {
     await connectDB();
     
     const db = mongoose.connection.db;
+
+    // ✅ Build-safe null check
+    if (!db) {
+      return NextResponse.json({
+        success: false,
+        message: "Database is not available at build time — this is normal.",
+        hint: "Visit this API after deployment to see DB data."
+      });
+    }
+
     const collections = await db.listCollections().toArray();
-    
-    // Try different collection names
     const collectionNames = collections.map(c => c.name);
-    
+
     let results: any = {
       connection: 'connected',
       database: db.databaseName,
@@ -19,9 +27,9 @@ export async function GET() {
       data: {}
     };
 
-    // Try to find data in common collection names
+    // Try different possible collection names
     const possibleNames = ['datapoints', 'DataPoint', 'data', 'dataPoints'];
-    
+
     for (const name of possibleNames) {
       try {
         const collection = db.collection(name);
@@ -34,7 +42,7 @@ export async function GET() {
           };
         }
       } catch (e) {
-        // Collection doesn't exist
+        // Collection doesn't exist — ignore
       }
     }
 
@@ -42,6 +50,7 @@ export async function GET() {
       success: true,
       ...results
     });
+
   } catch (error: any) {
     return NextResponse.json(
       { 
@@ -53,4 +62,3 @@ export async function GET() {
     );
   }
 }
-
